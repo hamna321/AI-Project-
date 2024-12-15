@@ -1,156 +1,133 @@
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
-from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score
-import matplotlib.pyplot as plt
+from clarifai_grpc.channel.clarifai_channel import ClarifaiChannel
+from clarifai_grpc.grpc.api import resources_pb2, service_pb2, service_pb2_grpc
+from clarifai_grpc.grpc.api.status import status_code_pb2
 import streamlit as st
+import numpy as np
+import matplotlib.pyplot as plt
 
+# Clarifai API Details
+PAT = '4aa20514049b4b0791f16cbde41ee574'
+USER_ID = 'openai'
+APP_ID = 'chat-completion'
+MODEL_ID = 'GPT-4'
+MODEL_VERSION_ID = '9e87c1d976fb490f8ee85bf858cee568'
 
-# Load Pima Indians Diabetes Dataset
-diabetes_data = pd.read_csv('https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv', header=None)
+# Define normal ranges for each feature
+normal_ranges = {
+    'age': (45, 60),  # Assume normal range: ages 45-60
+    'glucose': (70, 100),  # Normal glucose range in mg/dL
+    'bmi': (18.5, 24.9),  # Normal BMI range
+    'systolic_bp': 120,  # Normal systolic BP (mm Hg)
+    'diastolic_bp': 80  # Normal diastolic BP (mm Hg)
+}
 
-# Assign column names
-columns = ['Pregnancies 🤰', 'Glucose 🩸', 'BloodPressure 💓', 'SkinThickness 🖐️', 'Insulin 💉', 
-           'BMI ⚖️', 'DiabetesPedigreeFunction 🧬', 'Age 👶', 'Outcome 🏥']
-diabetes_data.columns = columns
+# Function to calculate risk score
+def calculate_risk(patient_data, normal_ranges):
+    age, glucose, bmi, systolic_bp, diastolic_bp = patient_data
+    risk_score = 0
 
-# Features and labels
-X = diabetes_data.drop('Outcome 🏥', axis=1)
-y = diabetes_data['Outcome 🏥']
+    # Age risk
+    age_risk = abs(age - np.mean(normal_ranges['age'])) / (normal_ranges['age'][1] - normal_ranges['age'][0])
 
-# Split data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # Glucose risk
+    glucose_risk = abs(glucose - normal_ranges['glucose'][1]) / (normal_ranges['glucose'][1] - normal_ranges['glucose'][0])
 
-# Normalize features
-scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
-
-# Train the model
-model = LogisticRegression(max_iter=1000)
-model.fit(X_train, y_train)
-
-# Test predictions
-y_pred = model.predict(X_test)
-
-# Evaluate the model
-accuracy = accuracy_score(y_test, y_pred)
-
-
-# Function to suggest health advice
-def give_suggestion(prediction, user_data):
-    """
-    Generate suggestions based on prediction and user's health data.
-    Args:
-        prediction: Risk prediction (1 means at risk, 0 means low risk).
-        user_data: Dictionary - Contains the user's entered health information.
-    Returns:
-        Health advice string.
-    """
-    # Risky health condition warnings
-    if prediction == 1:
-        health_advice = ""
-        if user_data['BMI ⚖️'] > 25:
-            health_advice += "⚖️ Your BMI is above the normal range. Focus on a healthy diet and exercise.\n"
-        if user_data['Glucose 🩸'] > 140:
-            health_advice += "🩸 Your blood glucose is high. Monitor sugar intake.\n"
-        if user_data['BloodPressure 💓'] > 130:
-            health_advice += "💓 Your blood pressure is elevated. Reduce stress and monitor diet.\n"
-        return f"""
-        🚨 **You are at risk of developing diabetes. Here are some tips to stay healthy:**  
-        {health_advice}
-        🍏 Eat healthy, stay active, and check your health regularly.  
-        🏃‍♂️ Incorporate at least 30 minutes of daily exercise.  
-        🩺 Visit your healthcare provider for regular check-ups.
-        """
+    # BMI risk
+    if bmi < normal_ranges['bmi'][0]:
+        bmi_risk = (normal_ranges['bmi'][0] - bmi) / normal_ranges['bmi'][0]
+    elif bmi > normal_ranges['bmi'][1]:
+        bmi_risk = (bmi - normal_ranges['bmi'][1]) / (40 - normal_ranges['bmi'][1])
     else:
-        health_advice = ""
-        if user_data['BMI ⚖️'] > 25:
-            health_advice += "⚖️ Your BMI is slightly high. Stay consistent with your fitness journey.\n"
-        return f"""
-        🟢 **You are at a lower risk of developing diabetes. Keep maintaining a healthy lifestyle!**  
-        {health_advice}
-        🥗 Eat a balanced diet and incorporate fruits and vegetables.  
-        🚶‍♀️ Engage in daily physical activity.  
-        🏆 Keep up the good work with positive lifestyle choices!
-        """
+        bmi_risk = 0
 
+    # Blood Pressure risk
+    bp_risk = max(abs(systolic_bp - normal_ranges['systolic_bp']) / 40, abs(diastolic_bp - normal_ranges['diastolic_bp']) / 40)
 
-# Function to visualize patient's health vs normal ranges
-def plot_patient_health(user_data, diabetes_data):
-    """
-    Function to visualize comparison between patient health data and population ranges.
-    Args:
-        user_data: The user's health data entered by them.
-        diabetes_data: The historical health dataset (Pima Indians Dataset).
-    """
-    # Create subplots
-    fig, axs = plt.subplots(2, 2, figsize=(14, 10))
+    # Total risk score
+    risk_score = age_risk + glucose_risk + bmi_risk + bp_risk
+    risk_score = min(1, risk_score)  # Cap the score at 1
+    return risk_score
 
-    # Plot user's blood glucose vs population's blood glucose distribution
-    axs[0, 0].hist(diabetes_data['Glucose 🩸'], bins=30, alpha=0.7, label="Population")
-    axs[0, 0].axvline(user_data['Glucose 🩸'], color='red', linestyle='dashed', linewidth=2, label="You")
-    axs[0, 0].set_title("🩸 Blood Glucose Comparison")
-    axs[0, 0].set_xlabel("Glucose Levels")
-    axs[0, 0].set_ylabel("Frequency")
-    axs[0, 0].legend()
+# Streamlit UI for patient data input
+def get_patient_data():
+    st.sidebar.header("Patient Data Entry 📝")
+    age = st.sidebar.slider("👶 Age", 18, 100, 50)
+    glucose = st.sidebar.slider("🍩 Glucose Level (mg/dL)", 50, 200, 100)
+    bmi = st.sidebar.slider("📏 BMI", 10.0, 40.0, 25.0)
+    systolic_bp = st.sidebar.slider("💓 Systolic BP (mm Hg)", 80, 200, 120)
+    diastolic_bp = st.sidebar.slider("💓 Diastolic BP (mm Hg)", 60, 130, 80)
+    return [age, glucose, bmi, systolic_bp, diastolic_bp]
 
-    # Plot user's BMI vs population's BMI distribution
-    axs[0, 1].hist(diabetes_data['BMI ⚖️'], bins=30, alpha=0.7, label="Population")
-    axs[0, 1].axvline(user_data['BMI ⚖️'], color='red', linestyle='dashed', linewidth=2, label="You")
-    axs[0, 1].set_title("⚖️ BMI Comparison")
-    axs[0, 1].set_xlabel("BMI")
-    axs[0, 1].set_ylabel("Frequency")
-    axs[0, 1].legend()
+# Clarifai API for health advice
+def get_health_advice(prompt):
+    channel = ClarifaiChannel.get_grpc_channel()
+    stub = service_pb2_grpc.V2Stub(channel)
+    metadata = (('authorization', 'Key ' + PAT),)
+    user_data = resources_pb2.UserAppIDSet(user_id=USER_ID, app_id=APP_ID)
 
-    # Plot user's age vs population age distribution
-    axs[1, 0].hist(diabetes_data['Age 👶'], bins=30, alpha=0.7, label="Population")
-    axs[1, 0].axvline(user_data['Age 👶'], color='red', linestyle='dashed', linewidth=2, label="You")
-    axs[1, 0].set_title("👶 Age Comparison")
-    axs[1, 0].set_xlabel("Age")
-    axs[1, 0].set_ylabel("Frequency")
-    axs[1, 0].legend()
+    response = stub.PostModelOutputs(
+        service_pb2.PostModelOutputsRequest(
+            user_app_id=user_data,
+            model_id=MODEL_ID,
+            version_id=MODEL_VERSION_ID,
+            inputs=[
+                resources_pb2.Input(
+                    data=resources_pb2.Data(
+                        text=resources_pb2.Text(raw=prompt)
+                    )
+                )
+            ]
+        ),
+        metadata=metadata
+    )
 
-    # Plot user's blood pressure comparison vs population
-    axs[1, 1].hist(diabetes_data['BloodPressure 💓'], bins=30, alpha=0.7, label="Population")
-    axs[1, 1].axvline(user_data['BloodPressure 💓'], color='red', linestyle='dashed', linewidth=2, label="You")
-    axs[1, 1].set_title("💓 Blood Pressure Comparison")
-    axs[1, 1].set_xlabel("Blood Pressure")
-    axs[1, 1].set_ylabel("Frequency")
-    axs[1, 1].legend()
+    if response.status.code != status_code_pb2.SUCCESS:
+        raise Exception(f"API Error: {response.status.description}")
 
-    # Show plots
-    plt.tight_layout()
-    st.pyplot(fig)
+    return response.outputs[0].data.text.raw
 
-
-# Streamlit User Interface
-st.title("👩‍⚕️ Dr. Diabetic Risk Predictor 🩺")
-st.write(""" 
-Welcome to **Dr. Diabetic Risk Predictor**. Predict your risk of diabetes and get personalized insights! 🩺
+# Main application logic
+st.title("Health Risk and Recommendations App 💉")
+st.markdown("""
+    Input patient's health information and receive calculated risk score along with tailored health recommendations.
 """)
 
-# Input health stats using Streamlit UI
-st.subheader("📊 Enter your health information:")
-user_data = {}
-for feature in columns[:-1]:  # exclude the Outcome column
-    user_value = st.number_input(f"Enter your {feature}:", min_value=0, value=0, step=1)
-    user_data[feature] = user_value
+# Get user input
+patient_data = get_patient_data()
+risk_score = calculate_risk(patient_data, normal_ranges)
 
-# Preprocess user data
-user_input_df = pd.DataFrame([user_data])
-user_input_scaled = scaler.transform(user_input_df)
+# Construct the prompt for Clarifai GPT-4 model
+health_status_prompt = (
+    f"Provide health recommendations for a patient with the following attributes:\n"
+    f"Age: {patient_data[0]} years, Glucose Level: {patient_data[1]} mg/dL, "
+    f"BMI: {patient_data[2]}, Systolic BP: {patient_data[3]} mm Hg, "
+    f"Diastolic BP: {patient_data[4]} mm Hg.\n"
+    f"Calculated Risk Score: {risk_score:.2f}. Give specific advice on lifestyle, diet, and stress management."
+)
 
-# Prediction button
-if st.button("🔮 Predict My Risk 🏥"):
-    user_prediction = model.predict(user_input_scaled)[0]
-    st.subheader("🔎 Your Risk Prediction 💬")
-    st.write(give_suggestion(user_prediction, user_data))
-    
-    st.subheader("📊 Your Health vs Normal Population")
-    plot_patient_health(user_data, diabetes_data)
-    st.info(f"✅ Model Accuracy: {accuracy:.2f}")
-else:
-    st.warning("🖐️ Input your health details and press the button to check your risk!")
+# Get advice from Clarifai model
+with st.spinner("Generating recommendations..."):
+    health_advice = get_health_advice(health_status_prompt)
+
+# Display results
+st.subheader(f"📊 Calculated Risk Score: **{risk_score:.2f}**")
+
+# Risk Category
+risk_category = "🟢 Low Risk" if risk_score < 0.4 else ("🟡 Medium Risk" if risk_score < 0.7 else "🔴 High Risk")
+st.subheader(f"Risk Category: {risk_category}")
+
+# Display Health Recommendations
+st.subheader("👨‍⚕️ Tailored Health Recommendations")
+st.markdown(health_advice)
+
+# Visualization
+fig, ax = plt.subplots()
+ax.bar([1, 0], [risk_score, 1 - risk_score], color=["red", "green"])
+ax.set_xticks([1, 0])
+ax.set_xticklabels([f"Risk: {risk_score * 100:.2f}%", f"Normal: {(1 - risk_score) * 100:.2f}%"])
+ax.set_ylabel("Probability")
+ax.set_title("Health Risk Breakdown")
+st.pyplot(fig)
+
+# Footer
+st.markdown("Made with ❤️ for better patient care 👩‍⚕️👨‍⚕️")
