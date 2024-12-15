@@ -1,8 +1,4 @@
+clarifai-grpc
 streamlit
 numpy
-pandas
-scikit-learn
 matplotlib
-tensorflow
-torch
-seaborn
