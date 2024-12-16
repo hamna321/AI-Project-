@@ -12,8 +12,9 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib.colors import HexColor
 from PIL import Image as PILImage
+import os
 
-# Enhanced Configuration and Setup
+# Configuration and Setup
 st.set_page_config(
     page_title="Health Risk Assessment",
     page_icon="🩺",
@@ -231,14 +232,14 @@ class AdvancedHealthRiskAssessment:
     
         return fig_gauge, fig_components
     
-    def create_pdf_report(self, patient_name, patient_data, risk_score, risk_components, health_advice):
+    def create_pdf_report(self, patient_name, patient_data, risk_score, risk_components, fig_gauge, fig_components):
         """
-        Generate a comprehensive PDF health report
+        Generate a comprehensive PDF health report with graphs.
         """
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
         styles = getSampleStyleSheet()
-        
+    
         # Custom styles
         title_style = ParagraphStyle(
             'Title', 
@@ -247,10 +248,10 @@ class AdvancedHealthRiskAssessment:
             fontSize=16,
             spaceAfter=12
         )
-        
+    
         content = []
         content.append(Paragraph(f"Health Risk Assessment Report for {patient_name}", title_style))
-        
+    
         # Patient Details
         details = [
             f"Age: {patient_data[1]} years",
@@ -260,7 +261,7 @@ class AdvancedHealthRiskAssessment:
             f"Cholesterol: {patient_data[6]} mg/dL",
             f"Triglycerides: {patient_data[7]} mg/dL"
         ]
-        
+    
         for detail in details:
             content.append(Paragraph(detail, styles['Normal']))
         
@@ -273,17 +274,31 @@ class AdvancedHealthRiskAssessment:
             content.append(Paragraph(f"{key.capitalize()}: {risk_level}", styles['Normal']))
         
         content.append(Spacer(1, 12))
-        content.append(Paragraph("Personalized Health Recommendations:", styles['Heading3']))
+    
+        # Save Plotly figures as images
+        fig_gauge.write_image("gauge_chart.png")
+        fig_components.write_image("components_chart.png")
+    
+        # Add images to the PDF
+        content.append(Paragraph("Overall Risk Gauge:", styles['Heading3']))
+        content.append(Image("gauge_chart.png", width=4*inch, height=3*inch))
         
-        # Split long recommendations into paragraphs
-        recommendation_paras = health_advice.split('\n')
-        for para in recommendation_paras:
-            content.append(Paragraph(para, styles['Normal']))
-        
+        content.append(Spacer(1, 12))
+        content.append(Paragraph("Risk Component Breakdown Chart:", styles['Heading3']))
+        content.append(Image("components_chart.png", width=5*inch, height=4*inch))
+    
+        # Build the document
         doc.build(content)
         pdf = buffer.getvalue()
         buffer.close()
+    
+        # Cleanup temporary image files
+
+        os.remove("gauge_chart.png")
+        os.remove("components_chart.png")
+    
         return pdf
+
 def main():
     # Initialize the risk assessment system
     risk_manager = AdvancedHealthRiskAssessment()
@@ -375,7 +390,7 @@ def main():
         # Expandable Recommendations
         with st.expander("🩺 Personalized Health Recommendations"):
             st.markdown(health_advice)
-        pdf_report = risk_manager.create_pdf_report(patient_name, patient_data, risk_score, risk_components, health_advice)
+        pdf_report = risk_manager.create_pdf_report(patient_name, patient_data, risk_score, risk_components, fig_gauge, fig_components)
         
         # Download PDF Button
         st.download_button(
