@@ -15,7 +15,7 @@ from PIL import Image as PILImage
 
 # Enhanced Configuration and Setup
 st.set_page_config(
-    page_title="Advanced Health Risk Assessment",
+    page_title="Health Risk Assessment",
     page_icon="🩺",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -318,11 +318,11 @@ def main():
     """, unsafe_allow_html=True)
 
     # Enhanced Streamlit UI
-    st.title("🩺 Comprehensive Health Risk Assessment")
+    st.title("🩺 Health Risk Assessment")
     
     # Sidebar with elegant design
     with st.sidebar:
-        st.image("logo.png", caption="Advanced Health Risk Analyzer", use_column_width=True)
+        st.image("logo.png", caption="Health Risk Analyzer")
         st.header("📋 Patient Information")
         
         # Patient Name Input
