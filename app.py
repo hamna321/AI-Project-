@@ -1,114 +1,218 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
-import os
+import seaborn as sns
 from groq import Groq
+import plotly.graph_objs as go
+import plotly.express as px
 
-client = Groq(
-    api_key= st.secrets["api_key"],
+# Enhanced Configuration and Setup
+st.set_page_config(
+    page_title="Advanced Health Risk Assessment",
+    page_icon="🩺",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
-# Define normal ranges for each feature
-normal_ranges = {
-    'age': (45, 60),  # Assume normal range: ages 45-60
-    'glucose': (70, 100),  # Normal glucose range in mg/dL
-    'bmi': (18.5, 24.9),  # Normal BMI range
-    'systolic_bp': 120,  # Normal systolic BP (mm Hg)
-    'diastolic_bp': 80  # Normal diastolic BP (mm Hg)
+
+# Improved Normal Ranges with More Nuanced Categories
+NORMAL_RANGES = {
+    'age': {
+        'low_risk': (45, 55),
+        'medium_risk': (35, 65),
+        'high_risk': (0, 35) | (65, 100)
+    },
+    'glucose': {
+        'low_risk': (70, 100),
+        'medium_risk': (100, 125),
+        'high_risk': (125, 200)
+    },
+    'bmi': {
+        'low_risk': (18.5, 24.9),
+        'medium_risk': (25, 29.9) | (15, 18.5),
+        'high_risk': (30, 40) | (0, 15)
+    },
+    'blood_pressure': {
+        'low_risk': (90, 120, 60, 80),
+        'medium_risk': (121, 139, 81, 89),
+        'high_risk': (140, 200, 90, 120)
+    }
 }
 
-# Function to calculate risk score
-def calculate_risk(patient_data, normal_ranges):
-    age, glucose, bmi, systolic_bp, diastolic_bp = patient_data
-    risk_score = 0
+class HealthRiskAssessment:
+    def __init__(self):
+        # Initialize Groq Client with error handling
+        try:
+            self.client = Groq(api_key=st.secrets["api_key"])
+        except Exception as e:
+            st.error(f"API Configuration Error: {e}")
+            self.client = None
 
-    # Age risk
-    age_risk = abs(age - np.mean(normal_ranges['age'])) / (normal_ranges['age'][1] - normal_ranges['age'][0])
+    def calculate_advanced_risk(self, patient_data):
+        """
+        Advanced risk calculation with weighted scoring and multi-tier risk assessment
+        """
+        age, glucose, bmi, systolic_bp, diastolic_bp = patient_data
+        
+        def calculate_category_risk(value, categories):
+            if isinstance(categories, tuple):
+                min_val, max_val = categories
+                if value < min_val or value > max_val:
+                    return 1.0
+                return 0.0
+            
+            # Handle multiple range scenarios
+            for category in categories:
+                min_val, max_val = category
+                if min_val <= value <= max_val:
+                    return 0.0
+            return 1.0
 
-    # Glucose risk
-    glucose_risk = abs(glucose - normal_ranges['glucose'][1]) / (normal_ranges['glucose'][1] - normal_ranges['glucose'][0])
+        risk_components = {
+            'age': calculate_category_risk(age, NORMAL_RANGES['age']['low_risk']),
+            'glucose': calculate_category_risk(glucose, NORMAL_RANGES['glucose']['low_risk']),
+            'bmi': calculate_category_risk(bmi, NORMAL_RANGES['bmi']['low_risk']),
+            'blood_pressure': calculate_category_risk(
+                (systolic_bp, diastolic_bp), 
+                NORMAL_RANGES['blood_pressure']['low_risk']
+            )
+        }
 
-    # BMI risk
-    if bmi < normal_ranges['bmi'][0]:
-        bmi_risk = (normal_ranges['bmi'][0] - bmi) / normal_ranges['bmi'][0]
-    elif bmi > normal_ranges['bmi'][1]:
-        bmi_risk = (bmi - normal_ranges['bmi'][1]) / (40 - normal_ranges['bmi'][1])
-    else:
-        bmi_risk = 0
+        # Weighted risk calculation
+        weights = {'age': 0.2, 'glucose': 0.3, 'bmi': 0.25, 'blood_pressure': 0.25}
+        total_risk = sum(risk * weights[key] for key, risk in risk_components.items())
+        
+        return min(total_risk, 1.0), risk_components
 
-    # Blood Pressure risk
-    bp_risk = max(abs(systolic_bp - normal_ranges['systolic_bp']) / 40, abs(diastolic_bp - normal_ranges['diastolic_bp']) / 40)
+    def generate_health_recommendations(self, patient_data, risk_score, risk_components):
+        """
+        Generate contextual health recommendations
+        """
+        if not self.client:
+            return "API configuration error: Unable to generate recommendations."
 
-    # Total risk score
-    risk_score = age_risk + glucose_risk + bmi_risk + bp_risk
-    risk_score = min(1, risk_score)  # Cap the score at 1
-    return risk_score
+        prompt = f"""
+        Patient Profile:
+        - Age: {patient_data[0]} years
+        - Glucose Level: {patient_data[1]} mg/dL
+        - BMI: {patient_data[2]}
+        - Blood Pressure: {patient_data[3]}/{patient_data[4]} mmHg
+        - Overall Risk Score: {risk_score:.2f}
 
-# Streamlit UI for patient data input
-def get_patient_data():
-    st.sidebar.header("Patient Data Entry 📝")
-    age = st.sidebar.slider("👶 Age", 18, 100, 50)
-    glucose = st.sidebar.slider("🍩 Glucose Level (mg/dL)", 50, 200, 100)
-    bmi = st.sidebar.slider("📏 BMI", 10.0, 40.0, 25.0)
-    systolic_bp = st.sidebar.slider("💓 Systolic BP (mm Hg)", 80, 200, 120)
-    diastolic_bp = st.sidebar.slider("💓 Diastolic BP (mm Hg)", 60, 130, 80)
-    return [age, glucose, bmi, systolic_bp, diastolic_bp]
+        Risk Component Breakdown:
+        {', '.join(f"{k.capitalize()}: {'High' if v > 0.5 else 'Low'}" for k, v in risk_components.items())}
 
-# Clarifai API for health advice
-def get_health_advice(prompt):
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-            ],
-            model="llama3-8b-8192",
+        Provide highly personalized, actionable health recommendations addressing specific risk areas.
+        Use a professional medical tone, include specific lifestyle modifications, potential screenings, 
+        and preventive strategies.
+        """
+
+        try:
+            chat_completion = self.client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model="llama3-8b-8192",
+            )
+            return chat_completion.choices[0].message.content
+        except Exception as e:
+            return f"Recommendation generation error: {e}"
+
+    def visualize_risk(self, risk_score, risk_components):
+        """
+        Create interactive, informative risk visualization
+        """
+        # Plotly Gauge Chart for Overall Risk
+        fig_gauge = go.Figure(go.Indicator(
+            mode = "gauge+number",
+            value = risk_score * 100,
+            domain = {'x': [0, 1], 'y': [0, 1]},
+            title = {'text': "Health Risk Score", 'font': {'size': 24}},
+            gauge = {
+                'axis': {'range': [0, 100]},
+                'bar': {'color': "darkblue"},
+                'steps': [
+                    {'range': [0, 33], 'color': "lightgreen"},
+                    {'range': [33, 66], 'color': "yellow"},
+                    {'range': [66, 100], 'color': "red"}
+                ],
+            }
+        ))
+
+        # Plotly Bar Chart for Risk Components
+        risk_data = [
+            {'Component': k.capitalize(), 'Risk': v * 100} 
+            for k, v in risk_components.items()
+        ]
+        
+        fig_components = px.bar(
+            risk_data, 
+            x='Component', 
+            y='Risk', 
+            title='Risk Component Breakdown',
+            color='Risk',
+            color_continuous_scale='RdYlGn_r'
+        )
+
+        return fig_gauge, fig_components
+
+def main():
+    # Initialize the risk assessment system
+    risk_manager = HealthRiskAssessment()
+
+    # Enhanced Streamlit UI
+    st.title("🩺 Comprehensive Health Risk Assessment")
+    
+    # Sidebar with elegant design
+    with st.sidebar:
+        st.image("https://via.placeholder.com/150", caption="Health Risk Analyzer")
+        st.header("📋 Patient Information")
+        
+        # Styled input widgets
+        age = st.slider("👶 Age", 18, 100, 50, help="Your current age")
+        glucose = st.slider("🍬 Glucose Level (mg/dL)", 50, 200, 100, help="Fasting glucose level")
+        bmi = st.slider("📏 Body Mass Index (BMI)", 10.0, 40.0, 25.0, help="Body mass index")
+        systolic_bp = st.slider("💓 Systolic Blood Pressure", 80, 200, 120, help="Upper blood pressure reading")
+        diastolic_bp = st.slider("💓 Diastolic Blood Pressure", 60, 130, 80, help="Lower blood pressure reading")
+
+    # Risk Assessment Button
+    if st.button("🔍 Assess Health Risk", use_container_width=True):
+        patient_data = [age, glucose, bmi, systolic_bp, diastolic_bp]
+        
+        # Calculate risk
+        risk_score, risk_components = risk_manager.calculate_advanced_risk(patient_data)
+        
+        # Generate recommendations
+        health_advice = risk_manager.generate_health_recommendations(patient_data, risk_score, risk_components)
+        
+        # Risk Visualization
+        fig_gauge, fig_components = risk_manager.visualize_risk(risk_score, risk_components)
+        
+        # Results Display
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.plotly_chart(fig_gauge, use_container_width=True)
+        
+        with col2:
+            st.plotly_chart(fig_components, use_container_width=True)
+        
+        # Risk Category and Advice
+        st.subheader("📊 Risk Assessment Results")
+        
+        risk_category = (
+            "🟢 Low Risk" if risk_score < 0.33 else 
+            "🟡 Moderate Risk" if risk_score < 0.66 else 
+            "🔴 High Risk"
         )
         
-        return chat_completion.choices[0].message.content
+        st.markdown(f"**Overall Risk Category:** {risk_category}")
+        st.markdown(f"**Risk Score:** {risk_score * 100:.2f}%")
+        
+        # Expandable Recommendations
+        with st.expander("🩺 Personalized Health Recommendations"):
+            st.markdown(health_advice)
 
-# Main application logic
-st.title("Health Risk and Recommendations App 💉")
-st.markdown("""
-    Input patient's health information and receive calculated risk score along with tailored health recommendations.
-""")
+    # Footer
+    st.markdown("---")
+    st.markdown("**Disclaimer:** This tool provides general health insights and should not replace professional medical advice.")
 
-# Get user input
-patient_data = get_patient_data()
-risk_score = calculate_risk(patient_data, normal_ranges)
-
-# Construct the prompt for Clarifai GPT-4 model
-health_status_prompt = (
-    f"Provide health recommendations for a patient with the following attributes:\n"
-    f"Age: {patient_data[0]} years, Glucose Level: {patient_data[1]} mg/dL, "
-    f"BMI: {patient_data[2]}, Systolic BP: {patient_data[3]} mm Hg, "
-    f"Diastolic BP: {patient_data[4]} mm Hg.\n"
-    f"Calculated Risk Score: {risk_score:.2f}. Give specific advice on lifestyle, diet, and stress management."
-)
-
-# Get advice from Clarifai model
-with st.spinner("Generating recommendations..."):
-    health_advice = get_health_advice(health_status_prompt)
-
-# Display results
-st.subheader(f"📊 Calculated Risk Score: **{risk_score:.2f}**")
-
-# Risk Category
-risk_category = "🟢 Low Risk" if risk_score < 0.4 else ("🟡 Medium Risk" if risk_score < 0.7 else "🔴 High Risk")
-st.subheader(f"Risk Category: {risk_category}")
-
-# Display Health Recommendations
-st.subheader("👨‍⚕️ Tailored Health Recommendations")
-st.markdown(health_advice)
-
-# Visualization
-fig, ax = plt.subplots()
-ax.bar([1, 0], [risk_score, 1 - risk_score], color=["red", "green"])
-ax.set_xticks([1, 0])
-ax.set_xticklabels([f"Risk: {risk_score * 100:.2f}%", f"Normal: {(1 - risk_score) * 100:.2f}%"])
-ax.set_ylabel("Probability")
-ax.set_title("Health Risk Breakdown")
-st.pyplot(fig)
-
-# Footer
-st.markdown("Made with ❤️ for better patient care 👩‍⚕️👨‍⚕️")
+if __name__ == "__main__":
+    main()
