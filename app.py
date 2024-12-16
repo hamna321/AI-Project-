@@ -184,11 +184,7 @@ def main():
         # Generate recommendations
         health_advice = risk_manager.generate_health_recommendations(patient_data, risk_score, risk_components)
         
-        # Risk Visualization
-        fig_gauge, fig_components = risk_manager.visualize_risk(risk_score, risk_components)
-        
-        # Results Display
-        col1, col2 = st.columns(2)
+
         
         
         
@@ -203,7 +199,11 @@ def main():
         
         st.markdown(f"**Overall Risk Category:** {risk_category}")
         st.markdown(f"**Risk Score:** {risk_score * 100:.2f}%")
-
+        # Risk Visualization
+        fig_gauge, fig_components = risk_manager.visualize_risk(risk_score, risk_components)
+        
+        # Results Display
+        col1, col2 = st.columns(2)
         with col1:
             st.plotly_chart(fig_gauge, use_container_width=True)
         
