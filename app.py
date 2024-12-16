@@ -5,7 +5,7 @@ import os
 from groq import Groq
 
 client = Groq(
-    api_key= st.secrets['api_key'],
+    api_key= st.secrets["api_key"],
 )
 # Define normal ranges for each feature
 normal_ranges = {
