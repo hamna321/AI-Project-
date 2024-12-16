@@ -385,6 +385,12 @@ def main():
             mime="application/pdf"
         )
     # Additional Resources Section
+    st.warning(
+        "**Disclaimer:** This tool provides comprehensive health insights and "
+        "should not replace professional medical advice. Always consult "
+        "with healthcare professionals for personalized medical guidance."
+    )
+    st.markdown("---")
     st.markdown("## 🌟 Additional Health Resources")
     col1, col2, col3 = st.columns(3)
     
@@ -412,13 +418,9 @@ def main():
         - Stress Management
         """)
 
-    # Footer
-    st.markdown("---")
-    st.markdown(
-        "**Disclaimer:** This tool provides comprehensive health insights and "
-        "should not replace professional medical advice. Always consult "
-        "with healthcare professionals for personalized medical guidance."
-    )
+
+    
+    
 
 if __name__ == "__main__":
     main()
