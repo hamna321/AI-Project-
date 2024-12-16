@@ -1,10 +1,8 @@
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from groq import Groq
 import plotly.graph_objs as go
 import plotly.express as px
+from groq import Groq
 
 # Enhanced Configuration and Setup
 st.set_page_config(
@@ -14,6 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Improved Normal Ranges with More Nuanced Categories
 NORMAL_RANGES = {
     'age': {
         'low_risk': [(45, 55)],
@@ -53,18 +52,22 @@ class HealthRiskAssessment:
         age, glucose, bmi, systolic_bp, diastolic_bp = patient_data
         
         def calculate_category_risk(value, categories):
-            if isinstance(categories, tuple):
-                min_val, max_val = categories
-                if value < min_val or value > max_val:
-                    return 1.0
-                return 0.0
-            
-            # Handle multiple range scenarios
-            for category in categories:
-                min_val, max_val = category
-                if min_val <= value <= max_val:
-                    return 0.0
-            return 1.0
+            # Handle different types of risk categories
+            if isinstance(value, tuple):  # Blood pressure case
+                systolic, diastolic = value
+                for category in categories:
+                    if len(category) == 4:
+                        min_sys, max_sys, min_dia, max_dia = category
+                        if min_sys <= systolic <= max_sys and min_dia <= diastolic <= max_dia:
+                            return 0.0
+                return 1.0
+            else:  # Single value categories like age, glucose, BMI
+                for category in categories:
+                    if len(category) == 2:
+                        min_val, max_val = category
+                        if min_val <= value <= max_val:
+                            return 0.0
+                return 1.0
 
         risk_components = {
             'age': calculate_category_risk(age, NORMAL_RANGES['age']['low_risk']),
