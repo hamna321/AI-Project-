@@ -14,27 +14,26 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Improved Normal Ranges with More Nuanced Categories
 NORMAL_RANGES = {
     'age': {
-        'low_risk': (45, 55),
-        'medium_risk': (35, 65),
-        'high_risk': (0, 35) | (65, 100)
+        'low_risk': [(45, 55)],
+        'medium_risk': [(35, 65)],
+        'high_risk': [(0, 35), (65, 100)]
     },
     'glucose': {
-        'low_risk': (70, 100),
-        'medium_risk': (100, 125),
-        'high_risk': (125, 200)
+        'low_risk': [(70, 100)],
+        'medium_risk': [(100, 125)],
+        'high_risk': [(125, 200)]
     },
     'bmi': {
-        'low_risk': (18.5, 24.9),
-        'medium_risk': (25, 29.9) | (15, 18.5),
-        'high_risk': (30, 40) | (0, 15)
+        'low_risk': [(18.5, 24.9)],
+        'medium_risk': [(25, 29.9), (15, 18.5)],
+        'high_risk': [(30, 40), (0, 15)]
     },
     'blood_pressure': {
-        'low_risk': (90, 120, 60, 80),
-        'medium_risk': (121, 139, 81, 89),
-        'high_risk': (140, 200, 90, 120)
+        'low_risk': [(90, 120, 60, 80)],
+        'medium_risk': [(121, 139, 81, 89)],
+        'high_risk': [(140, 200, 90, 120)]
     }
 }
 
