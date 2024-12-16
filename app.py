@@ -190,11 +190,7 @@ def main():
         # Results Display
         col1, col2 = st.columns(2)
         
-        with col1:
-            st.plotly_chart(fig_gauge, use_container_width=True)
         
-        with col2:
-            st.plotly_chart(fig_components, use_container_width=True)
         
         # Risk Category and Advice
         st.subheader("📊 Risk Assessment Results")
@@ -207,7 +203,12 @@ def main():
         
         st.markdown(f"**Overall Risk Category:** {risk_category}")
         st.markdown(f"**Risk Score:** {risk_score * 100:.2f}%")
+
+        with col1:
+            st.plotly_chart(fig_gauge, use_container_width=True)
         
+        with col2:
+            st.plotly_chart(fig_components, use_container_width=True)
         # Expandable Recommendations
         with st.expander("🩺 Personalized Health Recommendations"):
             st.markdown(health_advice)
