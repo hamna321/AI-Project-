@@ -1,7 +1,6 @@
 groq
 streamlit
 numpy
-matplotlib
 plotly 
 seaborn 
 reportlab
