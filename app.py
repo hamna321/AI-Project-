@@ -6,7 +6,7 @@ from groq import Groq
 
 # Enhanced Configuration and Setup
 st.set_page_config(
-    page_title="Advanced Health Risk Assessment",
+    page_title="Health Risk Assessment",
     page_icon="🩺",
     layout="wide",
     initial_sidebar_state="expanded"
