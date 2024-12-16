@@ -41,7 +41,7 @@ Before running the project, ensure you have the following installed:
 
 Installation
 1. Clone the repository:
-git clone https://github.com/your-username/diabetic-health-risk-assessment.git
+git clone https://github.com/hamna321/AI-Project-.git
 cd diabetic-health-risk-assessment
 
 2. Set up a virtual environment:
