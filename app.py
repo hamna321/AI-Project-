@@ -429,7 +429,14 @@ def main():
         # Expandable Recommendations
         with st.expander("🩺 Personalized Health Recommendations"):
             st.markdown(health_advice)
-
+        pdf_report = risk_manager.generate_professional_pdf_report(patient_data, risk_score, risk_components, health_advice)
+        st.download_button(
+                label="📄 Download Detailed Report",
+                data=pdf_report,
+                file_name=f"{patient_name}_health_risk_assessment.pdf",
+                mime="application/pdf",
+                help="Download a comprehensive professional health risk assessment report"
+            )
     # Additional Resources Section
     st.markdown("## 🌟 Additional Health Resources")
     col1, col2, col3 = st.columns(3)
@@ -457,14 +464,7 @@ def main():
         - Nutrition Logging
         - Stress Management
         """)
-    pdf_report = risk_manager.generate_professional_pdf_report(patient_data, risk_score, risk_components, health_advice)
-            st.download_button(
-                label="📄 Download Detailed Report",
-                data=pdf_report,
-                file_name=f"{patient_name}_health_risk_assessment.pdf",
-                mime="application/pdf",
-                help="Download a comprehensive professional health risk assessment report"
-            )
+
     # Footer
     st.markdown("---")
     st.markdown(
