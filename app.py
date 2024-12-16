@@ -1,17 +1,12 @@
-from clarifai_grpc.channel.clarifai_channel import ClarifaiChannel
-from clarifai_grpc.grpc.api import resources_pb2, service_pb2, service_pb2_grpc
-from clarifai_grpc.grpc.api.status import status_code_pb2
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
+import os
+from groq import Groq
 
-# Clarifai API Details
-PAT = '4aa20514049b4b0791f16cbde41ee574'
-USER_ID = 'openai'
-APP_ID = 'chat-completion'
-MODEL_ID = 'GPT-4'
-MODEL_VERSION_ID = '9e87c1d976fb490f8ee85bf858cee568'
-
+client = Groq(
+    api_key= "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",
+)
 # Define normal ranges for each feature
 normal_ranges = {
     'age': (45, 60),  # Assume normal range: ages 45-60
@@ -60,31 +55,17 @@ def get_patient_data():
 
 # Clarifai API for health advice
 def get_health_advice(prompt):
-    channel = ClarifaiChannel.get_grpc_channel()
-    stub = service_pb2_grpc.V2Stub(channel)
-    metadata = (('authorization', 'Key ' + PAT),)
-    user_data = resources_pb2.UserAppIDSet(user_id=USER_ID, app_id=APP_ID)
-
-    response = stub.PostModelOutputs(
-        service_pb2.PostModelOutputsRequest(
-            user_app_id=user_data,
-            model_id=MODEL_ID,
-            version_id=MODEL_VERSION_ID,
-            inputs=[
-                resources_pb2.Input(
-                    data=resources_pb2.Data(
-                        text=resources_pb2.Text(raw=prompt)
-                    )
-                )
-            ]
-        ),
-        metadata=metadata
-    )
-
-    if response.status.code != status_code_pb2.SUCCESS:
-        raise Exception(f"API Error: {response.status.description}")
-
-    return response.outputs[0].data.text.raw
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
+            model="llama3-8b-8192",
+        )
+        
+        return chat_completion.choices[0].message.content
 
 # Main application logic
 st.title("Health Risk and Recommendations App 💉")
