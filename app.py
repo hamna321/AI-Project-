@@ -231,96 +231,59 @@ class AdvancedHealthRiskAssessment:
     
         return fig_gauge, fig_components
     
-    def generate_professional_pdf_report(self, patient_data, risk_score, risk_components, health_advice):
+    def create_pdf_report(self, patient_name, patient_data, risk_score, risk_components, health_advice):
         """
-        Generate a professional PDF report with simplified styling
+        Generate a comprehensive PDF health report
         """
-        patient_name, age, glucose, insulin, bmi, systolic_bp, diastolic_bp, cholesterol, triglycerides = patient_data
-
-        # Create buffer for PDF
         buffer = io.BytesIO()
-        
-        # Create PDF document
-        doc = SimpleDocTemplate(buffer, pagesize=letter, 
-                                rightMargin=72, leftMargin=72, 
-                                topMargin=72, bottomMargin=18)
-        
-        # Styles
+        doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
         styles = getSampleStyleSheet()
         
-        # Content
-        story = []
+        # Custom styles
+        title_style = ParagraphStyle(
+            'Title', 
+            parent=styles['Title'], 
+            textColor=HexColor('#2C3E50'),
+            fontSize=16,
+            spaceAfter=12
+        )
         
-        # Title
-        story.append(Paragraph("Comprehensive Health Risk Assessment", styles['Title']))
-        story.append(Paragraph(f"Patient: {patient_name}", styles['Subtitle']))
-        story.append(Spacer(1, 12))
+        content = []
+        content.append(Paragraph(f"Health Risk Assessment Report for {patient_name}", title_style))
         
-        # Patient Details Table
+        # Patient Details
         details = [
-            ['Age', str(age)],
-            ['Glucose Level', f"{glucose} mg/dL"],
-            ['Insulin Level', f"{insulin} µIU/mL"],
-            ['BMI', str(bmi)],
-            ['Blood Pressure', f"{systolic_bp}/{diastolic_bp} mmHg"],
-            ['Cholesterol', f"{cholesterol} mg/dL"],
-            ['Triglycerides', f"{triglycerides} mg/dL"],
-            ['Overall Risk Score', f"{risk_score*100:.2f}%"]
+            f"Age: {patient_data[1]} years",
+            f"Glucose Level: {patient_data[2]} mg/dL",
+            f"BMI: {patient_data[3]}",
+            f"Blood Pressure: {patient_data[4]}/{patient_data[5]} mmHg",
+            f"Cholesterol: {patient_data[6]} mg/dL",
+            f"Triglycerides: {patient_data[7]} mg/dL"
         ]
         
-        # Create table
-        table = Table(details, colWidths=[200, 200])
-        table.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), Color(0.2, 0.4, 0.6)),
-            ('TEXTCOLOR', (0,0), (-1,0), Color(1, 1, 1)),
-            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0,0), (-1,0), 12),
-            ('BOTTOMPADDING', (0,0), (-1,0), 12),
-            ('BACKGROUND', (0,1), (-1,-1), Color(0.95, 0.95, 0.95)),
-            ('GRID', (0,0), (-1,-1), 1, Color(0.7, 0.7, 0.7))
-        ]))
-        story.append(table)
-        story.append(Spacer(1, 12))
+        for detail in details:
+            content.append(Paragraph(detail, styles['Normal']))
         
-        # Risk Components
-        story.append(Paragraph("Risk Component Analysis", styles['Subtitle']))
-        risk_details = [
-            [k.capitalize(), f"{v*100:.2f}%"] 
-            for k, v in risk_components.items()
-        ]
-        risk_table = Table(risk_details, colWidths=[200, 200])
-        risk_table.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), Color(0.2, 0.4, 0.6)),
-            ('TEXTCOLOR', (0,0), (-1,0), Color(1, 1, 1)),
-            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0,0), (-1,0), 12),
-            ('BOTTOMPADDING', (0,0), (-1,0), 12),
-            ('BACKGROUND', (0,1), (-1,-1), Color(0.95, 0.95, 0.95)),
-            ('GRID', (0,0), (-1,-1), 1, Color(0.7, 0.7, 0.7))
-        ]))
-        story.append(risk_table)
-        story.append(Spacer(1, 12))
+        content.append(Spacer(1, 12))
+        content.append(Paragraph(f"Overall Risk Score: {risk_score * 100:.2f}%", styles['Heading2']))
         
-        # Health Recommendations
-        story.append(Paragraph("Personalized Health Recommendations", styles['Subtitle']))
+        content.append(Paragraph("Risk Component Breakdown:", styles['Heading3']))
+        for key, value in risk_components.items():
+            risk_level = 'High Risk' if value > 0.5 else 'Low Risk'
+            content.append(Paragraph(f"{key.capitalize()}: {risk_level}", styles['Normal']))
+        
+        content.append(Spacer(1, 12))
+        content.append(Paragraph("Personalized Health Recommendations:", styles['Heading3']))
+        
+        # Split long recommendations into paragraphs
         recommendation_paras = health_advice.split('\n')
         for para in recommendation_paras:
-            story.append(Paragraph(para, styles['Normal']))
-            story.append(Spacer(1, 6))
+            content.append(Paragraph(para, styles['Normal']))
         
-        # Disclaimer
-        story.append(Paragraph("Disclaimer: This report is for informational purposes only and should not replace professional medical advice.", 
-                               styles['Normal']))
-        
-        # Build PDF
-        doc.build(story)
-        
-        # Get PDF buffer
-        pdf_bytes = buffer.getvalue()
+        doc.build(content)
+        pdf = buffer.getvalue()
         buffer.close()
-        return pdf_bytes
+        return pdf
 def main():
     # Initialize the risk assessment system
     risk_manager = AdvancedHealthRiskAssessment()
@@ -412,14 +375,15 @@ def main():
         # Expandable Recommendations
         with st.expander("🩺 Personalized Health Recommendations"):
             st.markdown(health_advice)
-        pdf_report = risk_manager.generate_professional_pdf_report(patient_data, risk_score, risk_components, health_advice)
+        pdf_report = risk_manager.create_pdf_report(patient_name, patient_data, risk_score, risk_components, health_advice)
+        
+        # Download PDF Button
         st.download_button(
-                label="📄 Download Detailed Report",
-                data=pdf_report,
-                file_name=f"{patient_name}_health_risk_assessment.pdf",
-                mime="application/pdf",
-                help="Download a comprehensive professional health risk assessment report"
-            )
+            label="📄 Download Full Report",
+            data=pdf_report,
+            file_name=f"{patient_name}_health_risk_report.pdf",
+            mime="application/pdf"
+        )
     # Additional Resources Section
     st.markdown("## 🌟 Additional Health Resources")
     col1, col2, col3 = st.columns(3)
