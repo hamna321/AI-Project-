@@ -233,10 +233,10 @@ class AdvancedHealthRiskAssessment:
     
     def generate_professional_pdf_report(self, patient_data, risk_score, risk_components, health_advice):
         """
-        Generate a professional PDF report
+        Generate a professional PDF report with simplified styling
         """
         patient_name, age, glucose, insulin, bmi, systolic_bp, diastolic_bp, cholesterol, triglycerides = patient_data
-    
+
         # Create buffer for PDF
         buffer = io.BytesIO()
         
@@ -247,19 +247,6 @@ class AdvancedHealthRiskAssessment:
         
         # Styles
         styles = getSampleStyleSheet()
-        styles.add(ParagraphStyle(name='Title', 
-                                  fontSize=16, 
-                                  textColor=HexColor('#2C3E50'), 
-                                  spaceAfter=14, 
-                                  alignment=TA_CENTER))
-        styles.add(ParagraphStyle(name='Subtitle', 
-                                  fontSize=12, 
-                                  textColor=HexColor('#34495E'), 
-                                  spaceAfter=12, 
-                                  alignment=TA_CENTER))
-        styles.add(ParagraphStyle(name='Normal', 
-                                  fontSize=10, 
-                                  textColor=HexColor('#2C3E50')))
         
         # Content
         story = []
@@ -284,14 +271,14 @@ class AdvancedHealthRiskAssessment:
         # Create table
         table = Table(details, colWidths=[200, 200])
         table.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), HexColor('#3498DB')),
-            ('TEXTCOLOR', (0,0), (-1,0), HexColor('#FFFFFF')),
+            ('BACKGROUND', (0,0), (-1,0), Color(0.2, 0.4, 0.6)),
+            ('TEXTCOLOR', (0,0), (-1,0), Color(1, 1, 1)),
             ('ALIGN', (0,0), (-1,-1), 'CENTER'),
             ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
             ('FONTSIZE', (0,0), (-1,0), 12),
             ('BOTTOMPADDING', (0,0), (-1,0), 12),
-            ('BACKGROUND', (0,1), (-1,-1), HexColor('#F4F6F7')),
-            ('GRID', (0,0), (-1,-1), 1, HexColor('#BDC3C7'))
+            ('BACKGROUND', (0,1), (-1,-1), Color(0.95, 0.95, 0.95)),
+            ('GRID', (0,0), (-1,-1), 1, Color(0.7, 0.7, 0.7))
         ]))
         story.append(table)
         story.append(Spacer(1, 12))
@@ -304,14 +291,14 @@ class AdvancedHealthRiskAssessment:
         ]
         risk_table = Table(risk_details, colWidths=[200, 200])
         risk_table.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), HexColor('#2980B9')),
-            ('TEXTCOLOR', (0,0), (-1,0), HexColor('#FFFFFF')),
+            ('BACKGROUND', (0,0), (-1,0), Color(0.2, 0.4, 0.6)),
+            ('TEXTCOLOR', (0,0), (-1,0), Color(1, 1, 1)),
             ('ALIGN', (0,0), (-1,-1), 'CENTER'),
             ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
             ('FONTSIZE', (0,0), (-1,0), 12),
             ('BOTTOMPADDING', (0,0), (-1,0), 12),
-            ('BACKGROUND', (0,1), (-1,-1), HexColor('#F4F6F7')),
-            ('GRID', (0,0), (-1,-1), 1, HexColor('#BDC3C7'))
+            ('BACKGROUND', (0,1), (-1,-1), Color(0.95, 0.95, 0.95)),
+            ('GRID', (0,0), (-1,-1), 1, Color(0.7, 0.7, 0.7))
         ]))
         story.append(risk_table)
         story.append(Spacer(1, 12))
@@ -325,10 +312,7 @@ class AdvancedHealthRiskAssessment:
         
         # Disclaimer
         story.append(Paragraph("Disclaimer: This report is for informational purposes only and should not replace professional medical advice.", 
-                               ParagraphStyle(name='Disclaimer', 
-                                              fontSize=8, 
-                                              textColor=HexColor('#7F8C8D'), 
-                                              alignment=TA_CENTER)))
+                               styles['Normal']))
         
         # Build PDF
         doc.build(story)
@@ -337,7 +321,6 @@ class AdvancedHealthRiskAssessment:
         pdf_bytes = buffer.getvalue()
         buffer.close()
         return pdf_bytes
-
 def main():
     # Initialize the risk assessment system
     risk_manager = AdvancedHealthRiskAssessment()
