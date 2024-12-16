@@ -163,46 +163,180 @@ class AdvancedHealthRiskAssessment:
 
     def visualize_risk(self, risk_score, risk_components):
         """
-        Create advanced, interactive risk visualizations
+        Create more professional, interactive risk visualizations
         """
-        # Plotly Gauge Chart for Overall Risk
-        fig_gauge = go.Figure(go.Indicator(
-            mode = "gauge+number",
-            value = risk_score * 100,
-            domain = {'x': [0, 1], 'y': [0, 1]},
-            title = {'text': "Health Risk Score", 'font': {'size': 24}},
-            gauge = {
-                'axis': {'range': [0, 100]},
-                'bar': {'color': "darkblue"},
-                'steps': [
-                    {'range': [0, 33], 'color': "lightgreen"},
-                    {'range': [33, 66], 'color': "yellow"},
-                    {'range': [66, 100], 'color': "red"}
-                ],
-            }
-        ))
-
-        # Plotly Bar Chart for Risk Components
-        risk_data = [
+        # Convert risk components to percentage for better visualization
+        risk_data = pd.DataFrame([
             {'Component': k.capitalize(), 'Risk': v * 100} 
             for k, v in risk_components.items()
-        ]
-        
+        ])
+    
+        # Plotly Gauge Chart for Overall Risk
+        fig_gauge = go.Figure(go.Indicator(
+            mode="gauge+number+delta",
+            value=risk_score * 100,
+            domain={'x': [0, 1], 'y': [0, 1]},
+            title={
+                'text': "Comprehensive Health Risk Score", 
+                'font': {'size': 20, 'color': '#333'}
+            },
+            gauge={
+                'axis': {'range': [0, 100], 'tickcolor': '#333'},
+                'bar': {'color': "#4A90E2"},
+                'steps': [
+                    {'range': [0, 33], 'color': "rgba(50, 205, 50, 0.6)"},  # Light green
+                    {'range': [33, 66], 'color': "rgba(255, 195, 0, 0.6)"},  # Soft yellow
+                    {'range': [66, 100], 'color': "rgba(255, 69, 0, 0.6)"}  # Soft red
+                ],
+                'threshold': {
+                    'line': {'color': "red", 'width': 4},
+                    'thickness': 0.75,
+                    'value': 66
+                }
+            }
+        ))
+        fig_gauge.update_layout(
+            font={'color': '#333'},
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
+        )
+    
+        # Enhanced Bar Chart with more professional styling
         fig_components = px.bar(
             risk_data, 
             x='Component', 
             y='Risk', 
-            title='Risk Component Breakdown',
+            title='Health Metrics Risk Breakdown',
+            labels={'Risk': 'Risk Level (%)', 'Component': 'Health Metrics'},
             color='Risk',
-            color_continuous_scale='RdYlGn_r'
+            color_continuous_scale='RdYlGn_r',
+            text='Risk'  # Add value labels
+        )
+        fig_components.update_traces(
+            texttemplate='%{text:.1f}%', 
+            textposition='outside',
+            textfont={'color': '#333', 'size': 12}
         )
         fig_components.update_layout(
+            title={'text': 'Health Metrics Risk Breakdown', 'x': 0.5, 'xanchor': 'center'},
             xaxis_title='Health Metrics',
             yaxis_title='Risk Level (%)',
-            coloraxis_colorbar=dict(title='Risk')
+            xaxis={'categoryorder': 'total descending'},
+            yaxis={'range': [0, 100]},
+            coloraxis_colorbar=dict(title='Risk Level'),
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font={'color': '#333'}
         )
-
+    
         return fig_gauge, fig_components
+    
+    def generate_professional_pdf_report(self, patient_data, risk_score, risk_components, health_advice):
+        """
+        Generate a professional PDF report
+        """
+        patient_name, age, glucose, insulin, bmi, systolic_bp, diastolic_bp, cholesterol, triglycerides = patient_data
+    
+        # Create buffer for PDF
+        buffer = io.BytesIO()
+        
+        # Create PDF document
+        doc = SimpleDocTemplate(buffer, pagesize=letter, 
+                                rightMargin=72, leftMargin=72, 
+                                topMargin=72, bottomMargin=18)
+        
+        # Styles
+        styles = getSampleStyleSheet()
+        styles.add(ParagraphStyle(name='Title', 
+                                  fontSize=16, 
+                                  textColor=HexColor('#2C3E50'), 
+                                  spaceAfter=14, 
+                                  alignment=TA_CENTER))
+        styles.add(ParagraphStyle(name='Subtitle', 
+                                  fontSize=12, 
+                                  textColor=HexColor('#34495E'), 
+                                  spaceAfter=12, 
+                                  alignment=TA_CENTER))
+        styles.add(ParagraphStyle(name='Normal', 
+                                  fontSize=10, 
+                                  textColor=HexColor('#2C3E50')))
+        
+        # Content
+        story = []
+        
+        # Title
+        story.append(Paragraph("Comprehensive Health Risk Assessment", styles['Title']))
+        story.append(Paragraph(f"Patient: {patient_name}", styles['Subtitle']))
+        story.append(Spacer(1, 12))
+        
+        # Patient Details Table
+        details = [
+            ['Age', str(age)],
+            ['Glucose Level', f"{glucose} mg/dL"],
+            ['Insulin Level', f"{insulin} µIU/mL"],
+            ['BMI', str(bmi)],
+            ['Blood Pressure', f"{systolic_bp}/{diastolic_bp} mmHg"],
+            ['Cholesterol', f"{cholesterol} mg/dL"],
+            ['Triglycerides', f"{triglycerides} mg/dL"],
+            ['Overall Risk Score', f"{risk_score*100:.2f}%"]
+        ]
+        
+        # Create table
+        table = Table(details, colWidths=[200, 200])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), HexColor('#3498DB')),
+            ('TEXTCOLOR', (0,0), (-1,0), HexColor('#FFFFFF')),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 12),
+            ('BOTTOMPADDING', (0,0), (-1,0), 12),
+            ('BACKGROUND', (0,1), (-1,-1), HexColor('#F4F6F7')),
+            ('GRID', (0,0), (-1,-1), 1, HexColor('#BDC3C7'))
+        ]))
+        story.append(table)
+        story.append(Spacer(1, 12))
+        
+        # Risk Components
+        story.append(Paragraph("Risk Component Analysis", styles['Subtitle']))
+        risk_details = [
+            [k.capitalize(), f"{v*100:.2f}%"] 
+            for k, v in risk_components.items()
+        ]
+        risk_table = Table(risk_details, colWidths=[200, 200])
+        risk_table.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), HexColor('#2980B9')),
+            ('TEXTCOLOR', (0,0), (-1,0), HexColor('#FFFFFF')),
+            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0,0), (-1,0), 12),
+            ('BOTTOMPADDING', (0,0), (-1,0), 12),
+            ('BACKGROUND', (0,1), (-1,-1), HexColor('#F4F6F7')),
+            ('GRID', (0,0), (-1,-1), 1, HexColor('#BDC3C7'))
+        ]))
+        story.append(risk_table)
+        story.append(Spacer(1, 12))
+        
+        # Health Recommendations
+        story.append(Paragraph("Personalized Health Recommendations", styles['Subtitle']))
+        recommendation_paras = health_advice.split('\n')
+        for para in recommendation_paras:
+            story.append(Paragraph(para, styles['Normal']))
+            story.append(Spacer(1, 6))
+        
+        # Disclaimer
+        story.append(Paragraph("Disclaimer: This report is for informational purposes only and should not replace professional medical advice.", 
+                               ParagraphStyle(name='Disclaimer', 
+                                              fontSize=8, 
+                                              textColor=HexColor('#7F8C8D'), 
+                                              alignment=TA_CENTER)))
+        
+        # Build PDF
+        doc.build(story)
+        
+        # Get PDF buffer
+        pdf_bytes = buffer.getvalue()
+        buffer.close()
+        return pdf_bytes
 
 def main():
     # Initialize the risk assessment system
@@ -323,7 +457,14 @@ def main():
         - Nutrition Logging
         - Stress Management
         """)
-
+    pdf_report = risk_manager.generate_professional_pdf_report(patient_data, risk_score, risk_components, health_advice)
+            st.download_button(
+                label="📄 Download Detailed Report",
+                data=pdf_report,
+                file_name=f"{patient_name}_health_risk_assessment.pdf",
+                mime="application/pdf",
+                help="Download a comprehensive professional health risk assessment report"
+            )
     # Footer
     st.markdown("---")
     st.markdown(
