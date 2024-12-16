@@ -160,11 +160,11 @@ def main():
     risk_manager = HealthRiskAssessment()
 
     # Enhanced Streamlit UI
-    st.title("🩺 Comprehensive Health Risk Assessment")
+    st.title("🩺 Health Risk Assessment")
     
     # Sidebar with elegant design
     with st.sidebar:
-        st.image("https://via.placeholder.com/150", caption="Health Risk Analyzer")
+        st.image("logo.png", caption="Health Risk Analyzer")
         st.header("📋 Patient Information")
         
         # Styled input widgets
